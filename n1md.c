@@ -1,0 +1,160 @@
+/*
+ * new etar125's markdown to html
+ * Copyright (c) 2026 etar125 Admanse
+ * Licensed under ISC license (see LICENSE)
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <e1l.h>
+#include "estrdup.h"
+
+#define llen(x) sizeof(x)/sizeof(x[0])
+
+typedef int (*parser)(const char *begin, const char *end, int newblock);
+
+typedef struct {
+    char *search;
+    int process;
+    char *start;
+    char *end;
+} st;
+
+static int printhl(char *s, size_t l);
+static int printh(char *s);
+
+static int doprefix(const char *begin, const char *end, int newblock);
+static int dosurround(const char *begin, const char *end, int newblock);
+static int doparagraph(const char *begin, const char *end, int newblock);
+static int doreplace(const char *begin, const char *end, int newblock);
+
+static void process(const char *begin, const char *end, int newblock);
+
+static parser ps[] = { doprefix, doparagraph, dosurround, doreplace };
+
+static char *replace[][2] = {
+    { "\\\\",   "\\" },
+    { "\\*",    "*" },
+    { "\\`",    "`" },
+    { "\\#",    "#" },
+    
+    { "&amp;", "&amp;" },
+    { "&",     "&amp;" },
+    { ">",     "&gt;" },
+    { "<",     "&lt;" }
+};
+
+static st prefix[] = {
+    { "# ", 0, "<h1>", "</h1>" },
+    { "## ", 0, "<h2>", "</h2>" },
+    { "### ", 0, "<h3>", "</h3>" },
+    { "#### ", 0, "<h4>", "</h4>" },
+    { "##### ", 0, "<h5>", "</h5>" },
+    { "###### ", 0, "<h6>", "</h6>" },
+};
+
+static st surround[] = {
+    { "`", 0, "<code>", "</code>" },
+    { "***", 1, "<b><i>", "</i></b>" },
+    { "**", 1, "<b>", "</b>" },
+    { "*", 1, "<i>", "</i>" },
+};
+
+int doprefix(const char *begin, const char *end, int newblock) { return 0; }
+int dosurround(const char *begin, const char *end, int newblock) { return 0; }
+int doparagraph(const char *begin, const char *end, int newblock) { return 0; }
+int doreplace(const char *begin, const char *end, int newblock) { return 0; }
+
+void process(const char *begin, const char *end, int newblock) {
+    int affected;
+    const char *p;
+    int i;
+
+    for (p = begin; p < end;) {
+        if (newblock)
+            while(*p == '\n')
+                if (++p == end)
+                    return;
+        affected = 0;
+        for (i = 0; i < llen(ps) && !affected; i++)
+            affected = ps[i](p, end, newblock);
+        p += abs(affected);
+        if (!affected) {
+            putc(*p++, stdout); /* replace with printhl */
+        }
+        if (p[0] == '\n' && p + 1 != end && p[1] == '\n')
+            newblock = 1;
+        else
+            newblock = 0;
+    }
+}
+
+char *progname;
+
+static int usage() {
+    printf("n1md v"VERSION" by etar125 Admanse\n"
+           "Usage: %s [file.md]\n"
+           "Examples:\n"
+           "    cat file.md | %s > file.html\n"
+           "    %s file.md > file.html\n",
+           progname, progname, progname);
+    return 0;
+}
+
+int main(int argc, char **argv) {
+    FILE *f = stdin;
+    int i, fi = -1;
+    char *fname = NULL, *buf = NULL, *ds = NULL, ch;
+    size_t fz, asize = 0, bsize = 0;
+
+    progname = argv[0];
+
+    for (i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-h") == 0 ||
+            strcmp(argv[i], "-v") == 0) {
+            return usage();
+        } else {
+            fi = i;
+        }
+    }
+
+    if (fi != -1) {
+        fname = argv[fi];
+        f = NULL;
+        f = fopen(fname, "r");
+        if (!f) {
+            perror("fopen");
+            return 1;
+        }
+        fseek(f, 0, SEEK_END);
+        fz = ftell(f);
+        rewind(f);
+
+        buf = malloc(fz + 1);
+        if (!buf) {
+            perror("malloc");
+            return 1;
+        }
+
+        fread(buf, 1, fz, f);
+        fclose(f);
+        buf[fz] = '\0';
+    } else {
+        while ((ch = fgetc(f)) != EOF) {
+            if (d_append(&ds, &asize, &bsize, &ch, 1) != 0) {
+                if (ds) { free(ds); }
+                return 1;
+            }
+        }
+        buf = d_shrink(ds, asize, bsize);
+        if (ds) { free(ds); }
+        if (!buf) { return 1; }
+        fz = asize;
+    }
+    
+    process(buf, buf + fz, 1);
+
+    return 0;
+}
