@@ -100,7 +100,7 @@ int doprefix(const char *begin, const char *end, int newblock) {
         else
             printh(p, q);
         puts(prefix[i].end);
-        return q - begin + 1;
+        return -(q - begin + 1);
     }
 
     return 0;
@@ -118,8 +118,8 @@ int dosurround(const char *begin, const char *end, int newblock) {
         if (end - begin < l * 2 || strncmp(begin, surround[i].search, l) != 0)
             continue;
         p += l;
-        for (q = p; q < end && strncmp(q, surround[i].search, l) != 0; q++);
-        if (q == end)
+        for (q = p; q + l < end && strncmp(q, surround[i].search, l) != 0; q++);
+        if (q + l == end)
             return 0;
         printf("%s", surround[i].begin);
         if (surround[i].process)
