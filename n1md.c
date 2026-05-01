@@ -18,7 +18,7 @@ typedef int (*parser)(const char *begin, const char *end, int newblock);
 typedef struct {
     char *search;
     int process;
-    char *start;
+    char *begin;
     char *end;
 } st;
 
@@ -80,15 +80,55 @@ void printh(const char *begin, const char *end) {
 }
 
 int doprefix(const char *begin, const char *end, int newblock) {
+    const char *p, *q;
+    int i;
+    size_t l;
+
+    p = begin;
+
+    for (i = 0; i < llen(prefix); i++) {
+        l = strlen(prefix[i].search);
+        if (end - begin < l || strncmp(begin, prefix[i].search, l) != 0)
+            continue;
+        p += l;
+        for (q = p; q < end && *q != '\n'; q++);
+        if (q == end)
+            return 0;
+        printf("%s", prefix[i].begin);
+        if (prefix[i].process)
+            process(p, q, 0);
+        else
+            printh(p, q);
+        puts(prefix[i].end);
+        return q - begin + 1;
+    }
+
     return 0;
 }
+
 int dosurround(const char *begin, const char *end, int newblock) { return 0; }
-int doparagraph(const char *begin, const char *end, int newblock) { return 0; }
+
+int doparagraph(const char *begin, const char *end, int newblock) {
+    const char *p;
+
+    if (!newblock)
+        return 0;
+
+    p = strstr(begin, "\n\n");
+    if (!p || p > end)
+        p = end;
+    printf("<p>");
+    process(begin, p, 0);
+    puts("</p>");
+
+    return -(p - begin);
+}
+
 int doreplace(const char *begin, const char *end, int newblock) { return 0; }
 
 void process(const char *begin, const char *end, int newblock) {
     int affected;
-    const char *p;
+    const char *p, *q;
     int i;
 
     for (p = begin; p < end;) {
@@ -100,13 +140,17 @@ void process(const char *begin, const char *end, int newblock) {
         for (i = 0; i < llen(ps) && !affected; i++)
             affected = ps[i](p, end, newblock);
         p += abs(affected);
-        if (!affected)
+        if (!affected) {
             printh(p, p + 1);
+            p++;
+        }
+        for (q = p; q < end && *q == '\n'; q++);
+        if (q == end)
+            return;
         if (p[0] == '\n' && p + 1 != end && p[1] == '\n')
             newblock = 1;
         else
-            newblock = 0;
-        p++;
+            newblock = affected < 0;
     }
 }
 
