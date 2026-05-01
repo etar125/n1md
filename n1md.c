@@ -22,8 +22,7 @@ typedef struct {
     char *end;
 } st;
 
-static int printhl(char *s, size_t l);
-static int printh(char *s);
+static void printh(const char *begin, const char *end);
 
 static int doprefix(const char *begin, const char *end, int newblock);
 static int dosurround(const char *begin, const char *end, int newblock);
@@ -43,7 +42,8 @@ static char *replace[][2] = {
     { "&amp;", "&amp;" },
     { "&",     "&amp;" },
     { ">",     "&gt;" },
-    { "<",     "&lt;" }
+    { "<",     "&lt;" },
+    { "\"",    "&quot;" }
 };
 
 static st prefix[] = {
@@ -62,7 +62,26 @@ static st surround[] = {
     { "*", 1, "<i>", "</i>" },
 };
 
-int doprefix(const char *begin, const char *end, int newblock) { return 0; }
+void printh(const char *begin, const char *end) {
+    const char *p;
+
+    for (p = begin; p < end; p++) {
+        if (*p == '&')
+            printf("&amp;");
+        else if (*p == '>')
+            printf("&gt;");
+        else if (*p == '<')
+            printf("&lt;");
+        else if (*p == '"')
+            printf("&quot;");
+        else
+            putc(*p, stdout);
+    }
+}
+
+int doprefix(const char *begin, const char *end, int newblock) {
+    return 0;
+}
 int dosurround(const char *begin, const char *end, int newblock) { return 0; }
 int doparagraph(const char *begin, const char *end, int newblock) { return 0; }
 int doreplace(const char *begin, const char *end, int newblock) { return 0; }
@@ -81,13 +100,13 @@ void process(const char *begin, const char *end, int newblock) {
         for (i = 0; i < llen(ps) && !affected; i++)
             affected = ps[i](p, end, newblock);
         p += abs(affected);
-        if (!affected) {
-            putc(*p++, stdout); /* replace with printhl */
-        }
+        if (!affected)
+            printh(p, p + 1);
         if (p[0] == '\n' && p + 1 != end && p[1] == '\n')
             newblock = 1;
         else
             newblock = 0;
+        p++;
     }
 }
 
