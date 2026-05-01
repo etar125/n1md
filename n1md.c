@@ -106,7 +106,32 @@ int doprefix(const char *begin, const char *end, int newblock) {
     return 0;
 }
 
-int dosurround(const char *begin, const char *end, int newblock) { return 0; }
+int dosurround(const char *begin, const char *end, int newblock) {
+    const char *p, *q;
+    int i;
+    size_t l;
+    
+    p = begin;
+
+    for (i = 0; i < llen(surround); i++) {
+        l = strlen(surround[i].search);
+        if (end - begin < l * 2 || strncmp(begin, surround[i].search, l) != 0)
+            continue;
+        p += l;
+        for (q = p; q < end && strncmp(q, surround[i].search, l) != 0; q++);
+        if (q == end)
+            return 0;
+        printf("%s", surround[i].begin);
+        if (surround[i].process)
+            process(p, q, 0);
+        else
+            printh(p, q);
+        printf("%s", surround[i].end);
+        return q - begin + l;
+    }
+
+    return 0;
+}
 
 int doparagraph(const char *begin, const char *end, int newblock) {
     const char *p;
