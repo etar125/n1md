@@ -28,10 +28,11 @@ static int doprefix(const char *begin, const char *end, int newblock);
 static int dosurround(const char *begin, const char *end, int newblock);
 static int doparagraph(const char *begin, const char *end, int newblock);
 static int doreplace(const char *begin, const char *end, int newblock);
+static int donewline(const char *begin, const char *end, int newblock);
 
 static void process(const char *begin, const char *end, int newblock);
 
-static parser ps[] = { doprefix, doparagraph, dosurround, doreplace };
+static parser ps[] = { doprefix, doparagraph, donewline, dosurround, doreplace };
 
 static char *replace[][2] = {
     { "\\\\",   "\\" },
@@ -92,7 +93,7 @@ int doprefix(const char *begin, const char *end, int newblock) {
             continue;
         p += l;
         for (q = p; q < end && *q != '\n'; q++);
-        if (q == end)
+        if (q == p)
             return 0;
         printf("%s", prefix[i].begin);
         if (prefix[i].process)
@@ -100,7 +101,7 @@ int doprefix(const char *begin, const char *end, int newblock) {
         else
             printh(p, q);
         puts(prefix[i].end);
-        return -(q - begin + 1);
+        return -(q - begin);
     }
 
     return 0;
@@ -118,8 +119,8 @@ int dosurround(const char *begin, const char *end, int newblock) {
         if (end - begin < l * 2 || strncmp(begin, surround[i].search, l) != 0)
             continue;
         p += l;
-        for (q = p; q + l < end && strncmp(q, surround[i].search, l) != 0; q++);
-        if (q + l == end)
+        for (q = p; q + l <= end && strncmp(q, surround[i].search, l) != 0; q++);
+        if (q + l > end)
             return 0;
         printf("%s", surround[i].begin);
         if (surround[i].process)
@@ -134,7 +135,7 @@ int dosurround(const char *begin, const char *end, int newblock) {
 }
 
 int doparagraph(const char *begin, const char *end, int newblock) {
-    const char *p;
+    const char *p, *q;
 
     if (!newblock)
         return 0;
@@ -142,14 +143,55 @@ int doparagraph(const char *begin, const char *end, int newblock) {
     p = strstr(begin, "\n\n");
     if (!p || p > end)
         p = end;
+    q = p;
+    for (; p > begin && *(p - 1) == '\n'; p--);
+    if (p == begin) { return 0; }
+
     printf("<p>");
     process(begin, p, 0);
     puts("</p>");
 
-    return -(p - begin);
+    return -(q - begin);
 }
 
-int doreplace(const char *begin, const char *end, int newblock) { return 0; }
+int doreplace(const char *begin, const char *end, int newblock) {
+    const char *p;
+    int i, rs;
+    size_t l;
+
+    rs = llen(replace);
+    p = begin;
+
+    for (i = 0; i < rs; i++) {
+        l = strlen(replace[i][0]);
+        if (p + l > end || strncmp(p, replace[i][0], l) != 0)
+            continue;
+        printf("%s", replace[i][1]);
+        return 1;
+    }
+
+    return 0;
+}
+
+int donewline(const char *begin, const char *end, int newblock) {
+    const char *p;
+
+    for (p = begin; p < end && *p != '\n'; p++);
+    
+    p -= 2;
+
+    if (p < begin || strncmp(p, "  ", 2) != 0)
+        return 0;
+
+    if (p + 3 >= end || p[3] == '\n') {
+        process(begin, p, 0);
+        return p - begin + 4;
+    } else {
+        process(begin, p, 0);
+        puts("<br>");
+        return p - begin + 3;
+    }
+}
 
 void process(const char *begin, const char *end, int newblock) {
     int affected;
@@ -243,6 +285,8 @@ int main(int argc, char **argv) {
     }
     
     process(buf, buf + fz, 1);
+    
+    free(buf);
 
     return 0;
 }
