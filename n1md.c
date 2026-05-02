@@ -55,12 +55,20 @@ static rp replace[] = {
 };
 
 static st prefix[] = {
+    /* 
+     * 0 - hprint
+     * 1 - collect and hprint
+     * 2 - collect and process as newblock
+     */
     { "# ", 0, "<h1>", "</h1>" },
     { "## ", 0, "<h2>", "</h2>" },
     { "### ", 0, "<h3>", "</h3>" },
     { "#### ", 0, "<h4>", "</h4>" },
     { "##### ", 0, "<h5>", "</h5>" },
     { "###### ", 0, "<h6>", "</h6>" },
+    { ">", 2, "<blockquote>", "</blockquote>" },
+    { "    ", 1, "<pre><code>", "</code></pre>" },
+    { "\t", 1, "<pre><code>", "</code></pre>" },
 };
 
 static st surround[] = {
@@ -88,26 +96,76 @@ void printh(const char *begin, const char *end) {
 }
 
 int doprefix(const char *begin, const char *end, int newblock) {
-    const char *p, *q;
-    int i;
-    size_t l;
+    const char *p, *q, *stop;
+    char *ds, *rs;
+    int i, c;
+    size_t l, asize, bsize;
 
     p = begin;
+    c = 0;
 
     for (i = 0; i < llen(prefix); i++) {
         l = prefix[i].searchlen;
         if (end - begin < l || strncmp(begin, prefix[i].search, l) != 0)
             continue;
-        p += l;
-        for (q = p; q < end && *q != '\n'; q++);
-        if (q == p)
-            return 0;
-        printf("%s", prefix[i].begin);
-        if (prefix[i].process)
-            process(p, q, 0);
-        else
-            printh(p, q);
-        puts(prefix[i].end);
+        if (prefix[i].process == 0) {
+            p += l;
+            for (q = p; q < end && *q != '\n'; q++);
+            if (q == p)
+                return 0;
+            printf("%s", prefix[i].begin);
+            if (prefix[i].process)
+                process(p, q, 0);
+            else
+                printh(p, q);
+            puts(prefix[i].end);
+        } else {
+            ds = NULL, asize = 0, bsize = 0;
+            stop = strstr(begin, "\n\n");
+            if (!stop || stop > end)
+                stop = end;
+
+            if (prefix[i].search[0] == '>')
+                c = 1;
+
+            for (; p < stop; p++) {
+                if (strncmp(p, prefix[i].search, l) != 0) {
+                    stop = p;
+                    if (*p == '\n')
+                        p--;
+                    break;
+                }
+                p += l;
+                if (c && p < stop && *p == ' ')
+                    p++;
+                for (q = p; q < stop && *q != '\n'; q++);
+                if (q == p)
+                    continue;
+                for (; p <= q; p++) {
+                    if (d_append(&ds, &asize, &bsize, p, 1) != 0) {
+                        if (ds)
+                            free(ds);
+                        perror("d_append failed");
+                        return 0;
+                    }
+                }
+                p = q;
+            }
+
+            rs = d_shrink(ds, asize, bsize);
+            free(ds);
+            if (!rs) {
+                perror("d_shrink failed");
+                return 0;
+            }
+
+            printf("%s", prefix[i].begin);
+            if (prefix[i].process == 2)
+                process(rs, rs + asize, 1);
+            else
+                printh(rs, rs + asize);
+            puts(prefix[i].end);
+        }
         return -(q - begin);
     }
 
@@ -163,13 +221,12 @@ int doparagraph(const char *begin, const char *end, int newblock) {
 
 int doreplace(const char *begin, const char *end, int newblock) {
     const char *p;
-    int i, rs;
+    int i;
     size_t l;
 
-    rs = llen(replace);
     p = begin;
 
-    for (i = 0; i < rs; i++) {
+    for (i = 0; i < llen(replace); i++) {
         l = replace[i].oldlen;
         if (p + l > end || strncmp(p, replace[i].old, l) != 0)
             continue;
