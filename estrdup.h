@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: FSFAP */
 /*
  * Copyright (c) 2026 etar125 Admanse
  *
