@@ -20,7 +20,14 @@ typedef struct {
     int process;
     char *begin;
     char *end;
+    size_t searchlen;
 } st;
+
+typedef struct {
+    char *old;
+    char *new;
+    size_t oldlen;
+} rp;
 
 static void printh(const char *begin, const char *end);
 
@@ -34,7 +41,7 @@ static void process(const char *begin, const char *end, int newblock);
 
 static parser ps[] = { doprefix, doparagraph, donewline, dosurround, doreplace };
 
-static char *replace[][2] = {
+static rp replace[] = {
     { "\\\\",   "\\" },
     { "\\*",    "*" },
     { "\\`",    "`" },
@@ -88,7 +95,7 @@ int doprefix(const char *begin, const char *end, int newblock) {
     p = begin;
 
     for (i = 0; i < llen(prefix); i++) {
-        l = strlen(prefix[i].search);
+        l = prefix[i].searchlen;
         if (end - begin < l || strncmp(begin, prefix[i].search, l) != 0)
             continue;
         p += l;
@@ -115,7 +122,7 @@ int dosurround(const char *begin, const char *end, int newblock) {
     p = begin;
 
     for (i = 0; i < llen(surround); i++) {
-        l = strlen(surround[i].search);
+        l = surround[i].searchlen;
         if (end - begin < l * 2 || strncmp(begin, surround[i].search, l) != 0)
             continue;
         p += l;
@@ -163,10 +170,10 @@ int doreplace(const char *begin, const char *end, int newblock) {
     p = begin;
 
     for (i = 0; i < rs; i++) {
-        l = strlen(replace[i][0]);
-        if (p + l > end || strncmp(p, replace[i][0], l) != 0)
+        l = replace[i].oldlen;
+        if (p + l > end || strncmp(p, replace[i].old, l) != 0)
             continue;
-        printf("%s", replace[i][1]);
+        printf("%s", replace[i].new);
         return 1;
     }
 
@@ -283,6 +290,17 @@ int main(int argc, char **argv) {
         if (!buf) { return 1; }
         fz = asize;
     }
+
+    /* Вычисление размеров */
+
+    for (i = 0; i < llen(prefix); i++)
+        prefix[i].searchlen = strlen(prefix[i].search);
+
+    for (i = 0; i < llen(surround); i++)
+        surround[i].searchlen = strlen(surround[i].search);
+
+    for (i = 0; i < llen(replace); i++)
+        replace[i].oldlen = strlen(replace[i].old);
     
     process(buf, buf + fz, 1);
     
