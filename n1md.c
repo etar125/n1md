@@ -174,7 +174,7 @@ int doreplace(const char *begin, const char *end, int newblock) {
         if (p + l > end || strncmp(p, replace[i].old, l) != 0)
             continue;
         printf("%s", replace[i].new);
-        return 1;
+        return l;
     }
 
     return 0;
