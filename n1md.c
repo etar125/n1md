@@ -40,10 +40,11 @@ static int donewline(const char *begin, const char *end, int newblock);
 static int dolink(const char *begin, const char *end, int newblock);
 static int dolist(const char *begin, const char *end, int newblock);
 static int docode(const char *begin, const char *end, int newblock);
+static int dohr(const char *begin, const char *end, int newblock);
 
 static void process(const char *begin, const char *end, int newblock);
 
-static parser ps[] = { docode, doprefix, dolist, doparagraph, donewline, dolink, dosurround, doreplace };
+static parser ps[] = { docode, doprefix, dohr, dolist, doparagraph, donewline, dolink, dosurround, doreplace };
 
 static rp replace[] = {
     { "\\\\",   "\\" },
@@ -394,7 +395,6 @@ int dolist(const char *begin, const char *end, int newblock) {
             }
         }
 
-
         if (error)
             break;
 
@@ -443,6 +443,26 @@ int docode(const char *begin, const char *end, int newblock) {
     puts("</code></pre>");
 
     return -(p + 4 - begin);
+}
+
+int dohr(const char *begin, const char *end, int newblock) {
+    const char *p = begin;
+    int len;
+    
+    if (!newblock)
+        return 0;
+
+    for (; p < end && *p != '\n'; p++);
+
+    len = p - begin;
+
+    if ((len == 3 && strncmp(begin, "---", 3) == 0) ||
+        (len == 5 && strncmp(begin, "- - -", 5) == 0))
+        puts("<hr>");
+    else
+        return 0;
+
+    return -len;
 }
 
 void process(const char *begin, const char *end, int newblock) {
