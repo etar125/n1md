@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include <e1l.h>
 #include "estrdup.h"
@@ -37,10 +38,11 @@ static int doparagraph(const char *begin, const char *end, int newblock);
 static int doreplace(const char *begin, const char *end, int newblock);
 static int donewline(const char *begin, const char *end, int newblock);
 static int dolink(const char *begin, const char *end, int newblock);
+static int dolist(const char *begin, const char *end, int newblock);
 
 static void process(const char *begin, const char *end, int newblock);
 
-static parser ps[] = { doprefix, doparagraph, donewline, dolink, dosurround, doreplace };
+static parser ps[] = { doprefix, dolist, doparagraph, donewline, dolink, dosurround, doreplace };
 
 static rp replace[] = {
     { "\\\\",   "\\" },
@@ -308,6 +310,108 @@ int dolink(const char *begin, const char *end, int newblock) {
     }
     
     return le + 1 - begin;
+}
+
+int dolist(const char *begin, const char *end, int newblock) {
+    const char *p, *q;
+    char *ds = NULL, *rs = NULL, marker;
+    int ol = 0, indent = 2, error = 0, ci = 0, nb = 0;
+    size_t asize = 0, bsize = 0;
+
+
+    if (newblock)
+        p = begin;
+    else if (*begin == '\n')
+        p = begin + 1;
+    else
+        return 0;
+    
+    q = p;
+    if (*p == '-' || *p == '*' || *p == '+') {
+        marker = *p;
+    } else {
+        for (q = p; p < end && isdigit(*p); p++);
+        if (p == q || p == end || *p != '.')
+            return 0;
+        ol = 1, p = q;
+    }
+    p++;
+    if (p >= end || *p != ' ')
+        return 0;
+
+    if (*begin == '\n') { puts(""); }
+    puts(ol ? "<ol>" : "<ul>");
+
+    for (p = q; p < end; p++) {
+        q = p;
+        
+        if (ol) {
+            for (; p < end && isdigit(*p); p++);
+            if (p == q || p == end || *p != '.')
+                break;
+        } else if (*p != marker) {
+            break;
+        }
+        p++;
+        if (p >= end || *p != ' ')
+            break;
+        p++;
+
+        if (ol)
+            indent = p - q;
+        nb = 0;
+
+        for (; p < end; p++){
+            if (*p == '\n') {
+                if (p + 1 == end)
+                    break;
+                if (d_append(&ds, &asize, &bsize, "\n", 1) != 0) {
+                    if (ds)
+                        free(ds);
+                    perror("d_append failed");
+                    error = 1;
+                    break;
+                }
+                for (ci = 0, q = p + 1; q < end && *q == ' ' && ci < indent; q++, ci++);
+                if (ci < indent)
+                    break;
+                if (*q == '\n') {
+                    nb = 1;
+                }
+                p = q - 1;
+            } else {
+                if (d_append(&ds, &asize, &bsize, p, 1) != 0) {
+                    if (ds)
+                        free(ds);
+                    perror("d_append failed");
+                    error = 1;
+                    break;
+                }
+            }
+        }
+
+
+        if (error)
+            break;
+
+        rs = d_shrink(ds, asize, bsize);
+        free(ds);
+        ds = NULL, bsize = 0;
+        if (!rs) {
+            perror("d_shrink failed");
+            break;
+        }
+
+        printf("<li>");
+        process(rs, rs + asize, nb);
+        asize = 0;
+        free(rs);
+        puts("</li>");
+    }
+
+    puts(ol ? "</ol>" : "</ul>");
+
+    return p - begin - 1;
 }
 
 void process(const char *begin, const char *end, int newblock) {
