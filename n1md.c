@@ -39,10 +39,11 @@ static int doreplace(const char *begin, const char *end, int newblock);
 static int donewline(const char *begin, const char *end, int newblock);
 static int dolink(const char *begin, const char *end, int newblock);
 static int dolist(const char *begin, const char *end, int newblock);
+static int docode(const char *begin, const char *end, int newblock);
 
 static void process(const char *begin, const char *end, int newblock);
 
-static parser ps[] = { doprefix, dolist, doparagraph, donewline, dolink, dosurround, doreplace };
+static parser ps[] = { docode, doprefix, dolist, doparagraph, donewline, dolink, dosurround, doreplace };
 
 static rp replace[] = {
     { "\\\\",   "\\" },
@@ -110,6 +111,9 @@ int doprefix(const char *begin, const char *end, int newblock) {
     char *ds, *rs;
     int i, c;
     size_t l, asize, bsize;
+    
+    if (!newblock)
+        return 0;
 
     p = begin;
     c = 0;
@@ -412,6 +416,33 @@ int dolist(const char *begin, const char *end, int newblock) {
     puts(ol ? "</ol>" : "</ul>");
 
     return p - begin - 1;
+}
+
+int docode(const char *begin, const char *end, int newblock) {
+    const char *p, *q;
+
+    if (!newblock || begin + 6 >= end || strncmp(begin, "```", 3) != 0)
+        return 0;
+
+    
+    p = strstr(begin + 3, "\n```");
+    if (!p || p > end)
+        p = end;
+    
+    q = begin + 3;
+    if (*q != '\n') {
+        printf("<pre><code class=\"");
+        for (; q < end && *q != '\n'; q++);
+        printh(begin + 3, q);
+        printf("\">");
+    } else {
+        puts("<pre><code>");
+    }
+
+    process(q + 1, p, 0);
+    puts("</code></pre>");
+
+    return -(p + 4 - begin);
 }
 
 void process(const char *begin, const char *end, int newblock) {
