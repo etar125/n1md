@@ -36,22 +36,28 @@ static int dosurround(const char *begin, const char *end, int newblock);
 static int doparagraph(const char *begin, const char *end, int newblock);
 static int doreplace(const char *begin, const char *end, int newblock);
 static int donewline(const char *begin, const char *end, int newblock);
+static int dolink(const char *begin, const char *end, int newblock);
 
 static void process(const char *begin, const char *end, int newblock);
 
-static parser ps[] = { doprefix, doparagraph, donewline, dosurround, doreplace };
+static parser ps[] = { doprefix, doparagraph, donewline, dolink, dosurround, doreplace };
 
 static rp replace[] = {
     { "\\\\",   "\\" },
     { "\\*",    "*" },
     { "\\`",    "`" },
     { "\\#",    "#" },
-    
+
+    { "\\&",     "&" },
+    { "\\>",     ">" },
+    { "\\<",     "<" },
+    { "\\\"",    "\"" },
+
     { "&amp;", "&amp;" },
     { "&",     "&amp;" },
     { ">",     "&gt;" },
     { "<",     "&lt;" },
-    { "\"",    "&quot;" }
+    { "\"",    "&quot;" },
 };
 
 static st prefix[] = {
@@ -90,6 +96,8 @@ void printh(const char *begin, const char *end) {
             printf("&lt;");
         else if (*p == '"')
             printf("&quot;");
+        else if (*p == '\\' && ++p < end)
+            putc(*p, stdout);
         else
             putc(*p, stdout);
     }
@@ -255,6 +263,51 @@ int donewline(const char *begin, const char *end, int newblock) {
         puts("<br>");
         return p - begin + 3;
     }
+}
+
+int dolink(const char *begin, const char *end, int newblock) {
+    const char *tb, *te, *lb, *le, *p;
+    int img = 0;
+
+    p = begin;
+    if (*p == '!') {
+        p++;
+        img = 1;
+    }
+    if (p + 3 >= end || *p != '[')
+        return 0;
+    tb = ++p;
+    for (; p < end && *p != ']'; p++)
+        if (*p == '\\')
+            p++;
+    if (p == end)
+        return 0;
+    te = p++;
+    if (*p != '(')
+        return 0;
+    lb = ++p;
+    for (; p < end && *p != ')'; p++)
+        if (*p == '\\')
+            p++;
+    if (p == end)
+        return 0;
+    le = p;
+
+    if (img) {
+        printf("<img src=\"");
+        printh(lb, le);
+        printf("\" alt=\"");
+        printh(tb, te);
+        printf("\">");
+    } else {
+        printf("<a href=\"");
+        printh(lb, le);
+        printf("\">");
+        process(tb, te, 0);
+        printf("</a>");
+    }
+    
+    return le + 1 - begin;
 }
 
 void process(const char *begin, const char *end, int newblock) {
