@@ -10,6 +10,7 @@
 #include <ctype.h>
 
 #include <e1l.h>
+#define ESTRNDUP
 #include "estrdup.h"
 
 #define llen(x) sizeof(x)/sizeof(x[0])
@@ -41,10 +42,11 @@ static int dolink(const char *begin, const char *end, int newblock);
 static int dolist(const char *begin, const char *end, int newblock);
 static int docode(const char *begin, const char *end, int newblock);
 static int dohr(const char *begin, const char *end, int newblock);
+static int doecmd(const char *begin, const char *end, int newblock);
 
 static void process(const char *begin, const char *end, int newblock);
 
-static parser ps[] = { docode, doprefix, dohr, dolist, doparagraph, donewline, dolink, dosurround, doreplace };
+static parser ps[] = { doecmd, docode, doprefix, dohr, dolist, doparagraph, donewline, dolink, dosurround, doreplace };
 
 static rp replace[] = {
     { "\\\\",   "\\" },
@@ -87,6 +89,8 @@ static st surround[] = {
     { "**", 1, "<b>", "</b>" },
     { "*", 1, "<i>", "</i>" },
 };
+
+char *class, *id, *classend, *idend;
 
 void printh(const char *begin, const char *end) {
     const char *p;
@@ -474,6 +478,78 @@ int dohr(const char *begin, const char *end, int newblock) {
     return -len;
 }
 
+int doecmd(const char *begin, const char *end, int newblock) {
+    const char *p, *q, *as = NULL;
+    char *out = NULL;
+    int len, ol, al, rlen;
+
+    if (newblock)
+        p = begin;
+    else
+        return 0;
+
+    if (*p != '?' || ++p >= end)
+        return 0;
+
+    for (q = p; q < end && *q != '\n'; q++)
+        if (!as && *q == ' ')
+            as = q;
+    len = q - p;
+    rlen = q - begin;
+    if (newblock) { rlen = -rlen; }
+    if (!as || ++as >= q)
+        return rlen;
+    
+    if (len > 6 && strncmp(p, "open", 4) == 0) {
+        printf("<");
+        printh(as, q);
+        if (class) {
+            printf(" class=\"");
+            printh(class, classend);
+            printf("\"");
+            free(class);
+            class = NULL;
+        }
+        if (id) {
+            printf(" id=\"");
+            printh(id, idend);
+            printf("\"");
+            free(id);
+            id = NULL;
+        }
+        puts(">");
+    } else if (len > 7 && strncmp(p, "close", 5) == 0) {
+        printf("</");
+        printh(as, q);
+        puts(">");
+    } else if (len > 7 && strncmp(p, "opt", 3) == 0) {
+        p = as;
+        for (; as < q && *as != ' '; as++);
+        if (as + 1 >= q)
+            return rlen;
+        ol = as - p;
+        as++;
+        al = q - as;
+        out = estrndup(as, al);
+        if (!out)
+            return rlen;
+
+        if (ol == 5 && strncmp(p, "class", ol) == 0) {
+            if (class)
+                free(class);
+            class = out;
+            classend = out + al;
+        } else if (ol == 2 && strncmp(p, "id", ol) == 0) {
+            if (id)
+                free(id);
+            id = out;
+            idend = out + al;
+        } else { free(out); }
+    }
+
+    return rlen;
+}
+
 void process(const char *begin, const char *end, int newblock) {
     int affected;
     const char *p, *q;
@@ -521,6 +597,7 @@ int main(int argc, char **argv) {
     size_t fz, asize = 0, bsize = 0;
 
     progname = argv[0];
+    class = NULL, id = NULL;
 
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 ||
@@ -579,6 +656,10 @@ int main(int argc, char **argv) {
     process(buf, buf + fz, 1);
     
     free(buf);
+    if (class)
+        free(class);
+    if (id)
+        free(id);
 
     return 0;
 }
