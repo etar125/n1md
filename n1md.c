@@ -274,10 +274,13 @@ int donewline(const char *begin, const char *end, int newblock) {
 
 int dolink(const char *begin, const char *end, int newblock) {
     const char *tb, *te, *lb, *le, *p;
-    int img = 0;
+    int img = 0, autolink = 0;
 
     p = begin;
-    if (*p == '!') {
+    if (p + 1 < end && *p == '!' && *(p + 1) == '!') {
+        p += 2;
+        img = 1, autolink = 1;
+    } else if (*p == '!' ) {
         p++;
         img = 1;
     }
@@ -301,11 +304,17 @@ int dolink(const char *begin, const char *end, int newblock) {
     le = p;
 
     if (img) {
+        if (autolink) {
+            printf("<a href=\"");
+            printh(lb, le);
+        }
         printf("<img src=\"");
         printh(lb, le);
         printf("\" alt=\"");
         printh(tb, te);
         printf("\">");
+        if (autolink)
+            printf("</a>");
     } else {
         printf("<a href=\"");
         printh(lb, le);
