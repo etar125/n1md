@@ -14,9 +14,12 @@
 #ifdef ESTRDUP
 
 static char* estrdup(const char *s) {
+    size_t len;
+    char *ret;
+
     if (!s) { return NULL; }
-    size_t len = strlen(s);
-    char *ret = malloc(len + 1);
+    len = strlen(s);
+    ret = malloc(len + 1);
     if (!ret) { return NULL; }
     memcpy(ret, s, len);
     ret[len] = '\0';
@@ -28,9 +31,12 @@ static char* estrdup(const char *s) {
 #ifdef ESTRDUPL
 
 static char* estrdupl(const char *s, size_t *outlen) {
+    size_t len;
+    char *ret;
+
     if (!s) { return NULL; }
-    size_t len = strlen(s);
-    char *ret = malloc(len + 1);
+    len = strlen(s);
+    ret = malloc(len + 1);
     if (!ret) { return NULL; }
     memcpy(ret, s, len);
     ret[len] = '\0';
@@ -43,12 +49,12 @@ static char* estrdupl(const char *s, size_t *outlen) {
 #ifdef ESTRNDUP
 
 static char* estrndup(const char *s, size_t n) {
-    if (!s) { return NULL; }
-    
-    size_t len = 0;
-    for (; len < n && s[len] != '\0'; len++);
+    size_t len;
+    char *ret;
 
-    char *ret = malloc(len + 1);
+    if (!s) { return NULL; }
+    for (len = 0; len < n && s[len] != '\0'; len++);
+    ret = malloc(len + 1);
     if (!ret) { return NULL; }
     memcpy(ret, s, len);
     ret[len] = '\0';
@@ -60,12 +66,12 @@ static char* estrndup(const char *s, size_t n) {
 #ifdef ESTRNDUPL
 
 static char* estrndupl(const char *s, size_t n, size_t *outlen) {
-    if (!s) { return NULL; }
-    
-    size_t len = 0;
-    for (; len < n && s[len] != '\0'; len++);
+    char *ret;
+    size_t len;
 
-    char *ret = malloc(len + 1);
+    if (!s) { return NULL; }
+    for (len = 0; len < n && s[len] != '\0'; len++);
+    ret = malloc(len + 1);
     if (!ret) { return NULL; }
     memcpy(ret, s, len);
     ret[len] = '\0';
