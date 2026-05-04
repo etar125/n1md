@@ -348,6 +348,7 @@ int dolink(const char *begin, const char *end, int newblock) {
         if (autolink) {
             printf("<a href=\"");
             printh(lb, le);
+            printf("\">");
         }
         printf("<img src=\"");
         printh(lb, le);
