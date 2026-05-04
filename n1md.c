@@ -43,10 +43,11 @@ static int dolist(const char *begin, const char *end, int newblock);
 static int docode(const char *begin, const char *end, int newblock);
 static int dohr(const char *begin, const char *end, int newblock);
 static int doecmd(const char *begin, const char *end, int newblock);
+static int doheader(const char *begin, const char *end, int newblock);
 
 static void process(const char *begin, const char *end, int newblock);
 
-static parser ps[] = { doecmd, docode, doprefix, dohr, dolist, doparagraph, donewline, dolink, dosurround, doreplace };
+static parser ps[] = { doecmd, docode, doheader, doprefix, dohr, dolist, doparagraph, donewline, dolink, dosurround, doreplace };
 
 static rp replace[] = {
     { "\\\\",   "\\" },
@@ -72,12 +73,6 @@ static st prefix[] = {
      * 1 - collect and hprint
      * 2 - collect and process as newblock
      */
-    { "# ", 0, "<h1>", "</h1>" },
-    { "## ", 0, "<h2>", "</h2>" },
-    { "### ", 0, "<h3>", "</h3>" },
-    { "#### ", 0, "<h4>", "</h4>" },
-    { "##### ", 0, "<h5>", "</h5>" },
-    { "###### ", 0, "<h6>", "</h6>" },
     { ">", 2, "<blockquote>", "</blockquote>" },
     { "    ", 1, "<pre><code>", "</code></pre>" },
     { "\t", 1, "<pre><code>", "</code></pre>" },
@@ -91,6 +86,7 @@ static st surround[] = {
 };
 
 char *class, *id, *classend, *idend;
+int headerlink;
 
 void printh(const char *begin, const char *end) {
     const char *p;
@@ -109,6 +105,47 @@ void printh(const char *begin, const char *end) {
         else
             putc(*p, stdout);
     }
+}
+
+int doheader(const char *begin, const char *end, int newblock) {
+    const char *p, *q;
+    int lvl;
+
+    if (!newblock)
+        return 0;
+
+    p = begin;
+
+    for (; p < end && *p == '#'; p++);
+    if (p == begin || *p != ' ')
+        return 0;
+    lvl = p - begin;
+    for (q = ++p; q < end && *q != '\n'; q++);
+    if (lvl > 6)
+        lvl = 6;
+    
+    printf("<h%d", lvl);
+    if (id) {
+        printf(" id=\"");
+        printh(id, idend);
+        printf("\"");
+        printf(">");
+        if (headerlink) {
+            printf("<a class=\"header-link\" href=\"#");
+            printh(id, idend);
+            printf("\">");
+        }
+    } else { printf(">"); }
+    printh(p, q);
+    if (id) {
+        free(id);
+        id = NULL;
+        if (headerlink)
+            printf("</a>");
+    }
+    printf("</h%d>\n", lvl);
+
+    return -(q - begin);
 }
 
 int doprefix(const char *begin, const char *end, int newblock) {
@@ -544,7 +581,14 @@ int doecmd(const char *begin, const char *end, int newblock) {
                 free(id);
             id = out;
             idend = out + al;
-        } else { free(out); }
+        } else if (ol == 2 && strncmp(p, "hl", ol) == 0) {
+            if (*out == '1' || *out == 't' || *out == 'y')
+                headerlink = 1;
+            else
+                headerlink = 0;
+            free(out);
+            out = NULL;
+        } else { free(out); out = NULL; }
     }
 
     return rlen;
@@ -597,7 +641,7 @@ int main(int argc, char **argv) {
     size_t fz, asize = 0, bsize = 0;
 
     progname = argv[0];
-    class = NULL, id = NULL;
+    class = NULL, id = NULL, headerlink = 0;
 
     for (i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-h") == 0 ||
