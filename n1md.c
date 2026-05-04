@@ -591,16 +591,19 @@ int doecmd(const char *begin, const char *end, int newblock) {
             out = NULL;
         } else { free(out); out = NULL; }
     } else if (len > 7 && strncmp(p, "unopt", 5) == 0) {
-        p = as;
-        ol = q - p;
+        ol = q - as;
 
-        if (ol == 5 && strncmp(p, "class", ol) == 0 && class) {
+        if (ol == 5 && strncmp(as, "class", ol) == 0 && class) {
             free(class);
             class = NULL;
-        } else if (ol == 2 && strncmp(p, "id", ol) == 0 && id) {
+        } else if (ol == 2 && strncmp(as, "id", ol) == 0 && id) {
             free(id);
             id = NULL;
         }
+    } else if (len > 5 && strncmp(p, "com", 3) == 0) {
+        printf("<!--");
+        printh(as, q);
+        puts("-->");
     }
 
     return rlen;
