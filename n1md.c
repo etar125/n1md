@@ -589,6 +589,17 @@ int doecmd(const char *begin, const char *end, int newblock) {
             free(out);
             out = NULL;
         } else { free(out); out = NULL; }
+    } else if (len > 7 && strncmp(p, "unopt", 5) == 0) {
+        p = as;
+        ol = q - p;
+
+        if (ol == 5 && strncmp(p, "class", ol) == 0 && class) {
+            free(class);
+            class = NULL;
+        } else if (ol == 2 && strncmp(p, "id", ol) == 0 && id) {
+            free(id);
+            id = NULL;
+        }
     }
 
     return rlen;
