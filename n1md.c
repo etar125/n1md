@@ -371,7 +371,7 @@ int dolink(const char *begin, const char *end, int newblock) {
 int dolist(const char *begin, const char *end, int newblock) {
     const char *p, *q;
     char *ds = NULL, *rs = NULL, marker;
-    int ol = 0, indent = 2, error = 0, ci = 0, nb = 0;
+    int ol = 0, indent = 2, error = 0, ci = 0, nb = 0, task = 0;
     size_t asize = 0, bsize = 0;
 
 
@@ -417,6 +417,21 @@ int dolist(const char *begin, const char *end, int newblock) {
             indent = p - q;
         nb = 0;
 
+        task = 0;
+
+        if (p + 2 < end) {
+            if (*p == '[' && *(p + 2) == ']') {
+                p++;
+                if (*p == ' ')
+                    task = 1;
+                else if (isprint((unsigned char)(*p)))
+                    task = 2;
+                else
+                    p -= 4;
+                p += 2;
+            }
+        }
+
         for (; p < end; p++){
             if (*p == '\n') {
                 if (p + 1 == end)
@@ -458,6 +473,12 @@ int dolist(const char *begin, const char *end, int newblock) {
         }
 
         printf("<li>");
+
+        if (task == 1)
+            printf("<input type=\"checkbox\" disabled=\"\">");
+        else if (task == 2)
+            printf("<input type=\"checkbox\" checked=\"\" disabled=\"\">");
+
         process(rs, rs + asize, nb);
         asize = 0;
         free(rs);
