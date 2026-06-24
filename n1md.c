@@ -129,20 +129,29 @@ int doheader(const char *begin, const char *end, int newblock) {
         printf(" id=\"");
         printh(id, idend);
         printf("\"");
-        printf(">");
-        if (headerlink) {
-            printf("<a class=\"header-link\" href=\"#");
-            printh(id, idend);
-            printf("\">");
-        }
-    } else { printf(">"); }
+    }
+    if (class) {
+        printf(" class=\"");
+        printh(class, classend);
+        printf("\"");
+    }
+    printf(">");
+    if (headerlink) {
+        printf("<a class=\"header-link\" href=\"#");
+        printh(id, idend);
+        printf("\">");
+    }
     printh(p, q);
     if (id) {
         free(id);
         id = NULL;
-        if (headerlink)
-            printf("</a>");
     }
+    if (class) {
+        free(class);
+        class = NULL;
+    }
+    if (headerlink)
+        printf("</a>");
     printf("</h%d>\n", lvl);
 
     return -(q - begin);
