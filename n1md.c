@@ -654,7 +654,10 @@ void process(const char *begin, const char *end, int newblock) {
             affected = ps[i](p, end, newblock);
         p += abs(affected);
         if (!affected) {
-            printh(p, p + 1);
+            if (*p == '\\' && p + 1 < end) {
+                p++;
+                printh(p, p + 1);
+            } else { printh(p, p + 1); }
             p++;
         }
         for (q = p; q < end && *q == '\n'; q++);
