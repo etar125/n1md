@@ -398,7 +398,7 @@ int dolist(const char *begin, const char *end, int newblock) {
         for (q = p; p < end && isdigit(*p); p++);
         if (p == q || p == end || *p != '.')
             return 0;
-        ol = 1, p = q;
+        ol = 1;
     }
     p++;
     if (p >= end || *p != ' ')
