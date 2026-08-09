@@ -1,6 +1,9 @@
-Сделать doshortlink
-Сделать dotable
-Сделать dounderline
-Добавить возможность отключения экранирования HTML
-==== РАСШИРЕНИЯ
-comments
+- doshortlink: [http://example.com] -> <a href="http://example.com">http://example.com</a>
+- dotable:
+    | 1 | 2 | 3 |
+    |---|---|---|
+    |:4:|:5 | 6:|
+- dounderline (headers)
+- Add ability to disable HTML escaping
+- Implement "comments" extension
+- "headerid" extension: #id~ Header with id=id
