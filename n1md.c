@@ -504,7 +504,6 @@ int docode(const char *begin, const char *end, int newblock) {
 
     if (!newblock || begin + 6 >= end || strncmp(begin, "```", 3) != 0)
         return 0;
-
     
     p = strstr(begin + 3, "\n```");
     if (!p || p > end)
@@ -512,7 +511,7 @@ int docode(const char *begin, const char *end, int newblock) {
     
     q = begin + 3;
     if (*q != '\n') {
-        printf("<pre><code class=\"");
+        printf("<pre><code class=\"language-");
         for (; q < end && *q != '\n'; q++);
         printh(begin + 3, q);
         printf("\">");
@@ -520,7 +519,7 @@ int docode(const char *begin, const char *end, int newblock) {
         puts("<pre><code>");
     }
 
-    process(q + 1, p, 0);
+    printh(q + 1, p);
     puts("</code></pre>");
 
     return -(p + 4 - begin);
